@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Artist Top Tracks Results</title>
+</head>
+<body>
+    <h1>Top Tracks for {{ artist_name }}</h1>
+    <ul class="track-list">
+        {% for song in songs %}
+        <li>{{ loop.index }}. {{ song['name'] }}</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>

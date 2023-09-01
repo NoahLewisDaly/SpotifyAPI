@@ -1,6 +1,9 @@
 import os, base64, json
 from dotenv import load_dotenv
 from requests import post, get
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
 
 load_dotenv()
 
@@ -48,11 +51,38 @@ def get_songs_by_artist(token, artist_id):
     json_result = json.loads(result.content)["tracks"]
     return json_result
 
-token = get_token()
-result = search_for_artist(token, "Drake")
-artist_id = result["id"]
-songs = get_songs_by_artist(token, artist_id)
 
-for idx, song in enumerate(songs):
-    print(f"{idx + 1}. {song['name']}")
 
+
+@app.route('/', methods=['GET'])
+def index():
+    return render_template('index.html')
+
+@app.route('/', methods=['POST'])
+def handle_form():
+    artist_name = request.form['artist_name']
+    token = get_token()
+    result = search_for_artist(token, artist_name)
+    if result is not None:
+        artist_id = result['id']
+        songs = get_songs_by_artist(token, artist_id)
+        return render_template('results.html', artist_name=artist_name, songs=songs)
+    return render_template('index.html')  # You can customize this further, e.g., display an error message
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+
+
+
+# print("Enter an Artist Name: ")
+# artist_name = input()
+
+# token = get_token()
+# result = search_for_artist(token, artist_name)
+# if result != None:
+#     artist_id = result["id"]
+#     songs = get_songs_by_artist(token, artist_id)
+#     for idx, song in enumerate(songs):
+#         print(f"{idx + 1}. {song['name']}")
