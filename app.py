@@ -10,8 +10,8 @@ app = Flask(__name__)
 
 load_dotenv()
 
-app.config ['SESSION_COOKIE_NAME'] = 'Spotify Cookie'
-app.secret_key = 'sdnfk2389fhoa@#$8^S*'
+app.config['SESSION_COOKIE_NAME'] = os.getenv("CLIENT_ID")
+app.secret_key = os.getenv("CLIENT_SECRET")
 TOKEN_INFO = 'token_info'
 
 @app.route('/')
@@ -20,50 +20,18 @@ def login() :
     return redirect(auth_url)
 
 @app.route('/redirect')
-def redirect_user():
+def redirect_page():
+    # clear the session
     session.clear()
+    # get the authorization code from the request parameters
     code = request.args.get('code')
+    # exchange the authorization code for an access token and refresh token
     token_info = create_spotify_oauth().get_access_token(code)
+    # save the token info in the session
     session[TOKEN_INFO] = token_info
-    return redirect(url_for('save_discover_weekly', external = True))
-
-
-
-
-@app.route('/saveDiscoverweekly')
-def save_discover_weekly():
-
-    try:
-        token_info = get_token()
-    except:
-        print("User not logged in")
-        return redirect('/')
-
-    sp = spotipy.Spotify(auth=token_info['access_token'])
-    user_id = sp.current_user()['id']
-    saved_weekly_playlist_id = None
-
-    current_playlists = sp.current_user_playlists()['items']
-    for playlist in current_playlists:
-        if(playlist['name'] == "Discover Weekly"):
-            discover_weekly_playlist_id = playlist['id']
-        if(playlist['name'] == "Saved Weekly"):
-            saved_weekly_playlist_id = playlist['id']
-
-    if not discover_weekly_playlist_id:
-        return "Discover Weekly Not Found."
-
-    if not saved_weekly_playlist_id:
-        new_playlist = sp.user_playlist_create(user_id, 'Saved Weekly', True)
-        saved_weekly_playlist_id = new_playlist['id']
-
-    discover_weekly_playlist = sp.playlist_items(discover_weekly_playlist_id)
-    song_uris = []
-    for song in discover_weekly_playlist['items']:
-        song_uri = song['track']['uri']
-        song_uri.append(song_uri)
-
-    sp.user_playlist_add_tracks(user_id, saved_weekly_playlist_id, song_uris, None)
+    # redirect the user to the save_discover_weekly route
+    # return redirect(url_for('save_discover_weekly',_external=True))
+    return render_template('index.html')
 
 
 
@@ -73,25 +41,27 @@ def save_discover_weekly():
 def get_token():
     token_info = session.get(TOKEN_INFO, None)
     if not token_info:
-        redirect(url_for('login', external = False))
+        # if the token info is not found, redirect the user to the login route
+        redirect(url_for('login', _external=False))
 
+    # check if the token is expired and refresh it if necessary
     now = int(time.time())
 
     is_expired = token_info['expires_at'] - now < 60
     if(is_expired):
         spotify_oauth = create_spotify_oauth()
-        token_info = spotify_oauth.refresh_access_token(token_info('refresh_token_info'))
+        token_info = spotify_oauth.refresh_access_token(token_info['refresh_token'])
 
+    return token_info
 
 
 def create_spotify_oauth():
-    return SpotifyOAuth (
-    client_id = os.getenv("CLIENT_ID"),
-    client_secret = os.getenv("CLIENT_SECRET"),
-    redirect_uri = url_for('redirect_user', _external= True),
-    scope = 'user-library-read playlist-modify-public playlist-modify-private'
+    return SpotifyOAuth(
+        client_id = os.getenv("CLIENT_ID"),
+        client_secret = os.getenv("CLIENT_SECRET"),
+        redirect_uri = url_for('redirect_page', _external=True),
+        scope='user-library-read playlist-modify-public playlist-modify-private'
     )
-
 
 app.run(debug=True)
 
@@ -172,3 +142,51 @@ app.run(debug=True)
 #     songs = get_songs_by_artist(token, artist_id)
 #     for idx, song in enumerate(songs):
 #         print(f"{idx + 1}. {song['name']}")
+
+
+# @app.route('/saveDiscoverWeekly')
+# def save_discover_weekly():
+#     try:
+#         # get the token info from the session
+#         token_info = get_token()
+#     except:
+#         # if the token info is not found, redirect the user to the login route
+#         print('User not logged in')
+#         return redirect("/")
+
+#     # create a Spotipy instance with the access token
+#     sp = spotipy.Spotify(auth=token_info['access_token'])
+
+#     # get the user's playlists
+#     current_playlists =  sp.current_user_playlists()['items']
+#     discover_weekly_playlist_id = None
+#     saved_weekly_playlist_id = None
+
+#     for playlist in current_playlists:
+#         print(playlist['name'])
+
+#     # find the Discover Weekly and Saved Weekly playlists
+#     for playlist in current_playlists:
+#         if(playlist['name'] == 'Discover Weekly'):
+#             discover_weekly_playlist_id = playlist['id']
+#         if(playlist['name'] == 'Saved Weekly'):
+#             saved_weekly_playlist_id = playlist['id']
+
+#     # if the Discover Weekly playlist is not found, return an error message
+#     if not discover_weekly_playlist_id:
+#         return 'Discover Weekly not found.'
+
+#     # get the tracks from the Discover Weekly playlist
+#     discover_weekly_playlist = sp.playlist_items(discover_weekly_playlist_id)
+#     song_uris = []
+#     for song in discover_weekly_playlist['items']:
+#         song_uri= song['track']['uri']
+#         song_uris.append(song_uri)
+
+#     # add the tracks to the Saved Weekly playlist
+#     sp.user_playlist_add_tracks("YOUR_USER_ID", saved_weekly_playlist_id, song_uris, None)
+
+#     # return a success message
+#     return ('Discover Weekly songs added successfully')
+
+# function to get the token info from the session
